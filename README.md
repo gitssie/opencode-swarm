@@ -1,159 +1,183 @@
-# OpenCode Swarm — 多智能体协作开发环境安装指南
+# OpenCode Swarm — Multi-Agent Collaborative Development Setup Guide
 
-> 一键搭建 architect + coder + designer 三智能体 + CodeGraph 语义索引 + Beads 任务图 + Muninn 持久记忆 的完整 AI 编码工作流。
+> One-click setup for architect + coder + designer agents + CodeGraph semantic index + Beads task graph + Muninn persistent memory — a complete AI coding workflow.
 
 ---
 
-## 架构概览
+## Architecture Overview
 
 ```
 ┌────────────────────────────────────────────────────┐
 │                    OpenCode CLI                      │
 ├────────────────────────────────────────────────────┤
 │  Architect (primary)                                │
-│  ├─ 规划需求、拆解任务、分配到 Coder/Designer         │
-│  ├─ 使用 Beads (bd) 管理任务依赖图                   │
-│  └─ 使用 Muninn 持久化架构决策                        │
+│  ├─ Plans requirements, decomposes tasks,           │
+│  │  delegates to Coder/Designer                    │
+│  ├─ Uses Beads (bd) to manage task dependency graph  │
+│  └─ Uses Muninn to persist architectural decisions   │
 │                                                     │
 │  Coder (subagent)                                   │
-│  ├─ 实现业务逻辑、测试、重构                          │
-│  ├─ 使用 CodeGraph 理解代码库                        │
-│  └─ 遵循 TDD 流程                                    │
+│  ├─ Implements business logic, tests, refactoring    │
+│  ├─ Uses CodeGraph to understand the codebase       │
+│  └─ Follows TDD workflow                            │
 │                                                     │
 │  Designer (subagent)                                │
-│  ├─ 产出可访问、响应式的 UI 脚手架                    │
-│  └─ 为 Coder 提供 TODO 占位的组件结构                 │
+│  ├─ Produces accessible, responsive UI scaffolding   │
+│  └─ Provides TODO-stubbed component structure       │
+│       for Coder                                     │
 ├────────────────────────────────────────────────────┤
-│  MCP 集成                                           │
-│  ├─ CodeGraph MCP — 语义代码索引                     │
-│  ├─ Beads MCP — 图结构任务跟踪                       │
-│  └─ Muninn MCP — 跨会话持久记忆                      │
+│  MCP Integrations                                   │
+│  ├─ CodeGraph MCP — Semantic code index             │
+│  ├─ Beads MCP — Graph-structured task tracking      │
+│  └─ Muninn MCP — Cross-session persistent memory    │
 └────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 第一步：环境要求
+## Step 0: Pre-Installation Check
 
-| 依赖 | 版本要求 | 说明 |
-|------|---------|------|
-| **OpenCode** | 最新版 | `npm install -g opencode` |
-| **Node.js** | >=18 | CodeGraph 自带运行时，无需 Node 也可安装 |
-| **Python + uv** | >=3.10 | 用于 Muninn MCP 和 Beads MCP |
-| **Git** | >=2.0 | 项目版本管理 |
+Before installing anything, check which components you already have:
 
 ```bash
-# 安装 opencode
+# Check what's already installed
+opencode --version     2>/dev/null && echo "✓ OpenCode" || echo "✗ OpenCode — install in Step 1"
+uv --version           2>/dev/null && echo "✓ uv (Python)" || echo "✗ uv — install in Step 1"
+codegraph version      2>/dev/null && echo "✓ CodeGraph" || echo "✗ CodeGraph — install in Step 2"
+bd --version           2>/dev/null && echo "✓ Beads" || echo "✗ Beads — install in Step 3"
+```
+
+| Component | Already Installed? | Action |
+|-----------|-------------------|--------|
+| **OpenCode** | Run `opencode --version` | Skip Step 1 |
+| **uv (Python)** | Run `uv --version` | Skip Step 1's uv section |
+| **CodeGraph** | Run `codegraph version` | Skip Step 2 install; run `codegraph init -i` per project |
+| **Beads** | Run `bd --version` | Skip Step 3 install; run `bd init` + `bd setup opencode` per project |
+| **Muninn Memory** | Do you have a remote Muninn instance running? | If yes: skip Step 4 install, go directly to [Step 4.2](#42-configure-in-opencodejson) to configure the URL. If no: proceed with Step 4 to deploy locally. |
+
+> **Tip**: If Muninn is already deployed remotely (shared team instance, cloud hosting, etc.), you only need the URL and token — skip the Docker/source install in Step 4 altogether.
+
+---
+
+## Step 1: Prerequisites
+
+| Dependency | Version | Notes |
+|------------|---------|-------|
+| **OpenCode** | latest | `npm install -g opencode` |
+| **Node.js** | >=18 | CodeGraph bundles its own runtime, Node optional for install |
+| **Python + uv** | >=3.10 | Required for Muninn MCP and Beads MCP |
+| **Git** | >=2.0 | Version control |
+
+```bash
+# Install opencode
 npm install -g opencode
 
-# 安装 uv（Python 包管理器）
+# Install uv (Python package manager)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 确认所有工具可用
+# Verify all tools
 opencode --version
 uv --version
 ```
 
 ---
 
-## 第二步：安装 CodeGraph（语义代码索引）
+## Step 2: Install CodeGraph (Semantic Code Index)
 
-CodeGraph 为项目构建预索引知识图谱，所有智能体通过 MCP 协议调用，避免用 grep/read 遍历代码。
+CodeGraph builds a pre-indexed knowledge graph for your project. All agents access it via the MCP protocol, avoiding grep/read traversal.
 
 ```bash
-# 运行交互式安装器（自动检测 opencode）
-npx @colbymchenry/codegraph
-
-# 或者手动非交互安装
+# Install globally
 npm install -g @colbymchenry/codegraph
-codegraph install --target=opencode --location=global --yes
 ```
 
-安装器会：
-1. 自动检测你已安装的智能体（包括 opencode）
-2. 将 MCP 服务器配置写入 `~/.config/opencode/opencode.json`
-3. 将 `codegraph` 加入 PATH
-
-**重启 opencode** 后 MCP 服务器生效。
-
-在每个项目中初始化索引：
+Then initialize the index in each project:
 
 ```bash
 cd /path/to/your-project
 codegraph init -i
 ```
 
-这会在项目根目录创建 `.codegraph/` 并构建初始索引。此后 opencode 智能体会自动使用 CodeGraph 工具。
+This creates `.codegraph/` in the project root. Then configure CodeGraph as an MCP server manually in your opencode config (see Step 5.2).
+
+```bash
+# After initialization, restart opencode for the MCP server to take effect
 
 ---
 
-## 第三步：安装 Beads（任务图管理）
+## Step 3: Install Beads (Task Graph Management)
 
-Beads（`bd`）= 面向 AI 智能体的分布式图结构任务追踪器。Architect 用它创建、分配、管理任务依赖。
+Beads (`bd`) = a distributed, graph-structured task tracker built for AI agents. Architect uses it to create, assign, and manage task dependencies.
 
 ```bash
-# 方式一：Homebrew（推荐）
+# Option 1: Homebrew (recommended)
 brew install beads
 
-# 方式二：一键脚本
+# Option 2: One-liner script
 curl -fsSL https://raw.githubusercontent.com/gastownhall/beads/main/scripts/install.sh | bash
 
-# 方式三：npm
+# Option 3: npm
 npm install -g @beads/bd
 ```
 
-### 在项目中初始化
+### Initialize in a project
 
 ```bash
 cd /path/to/your-project
 bd init
 ```
 
-### 为 OpenCode 注入指令
+### Inject instructions for OpenCode
 
 ```bash
 bd setup opencode
 ```
 
-这会在项目 `AGENTS.md` 中写入 Beads 工作流指令段，Architect 读取后会使用 `bd create`, `bd show`, `bd close` 等命令管理任务。
+This writes a Beads workflow instruction block into the project `AGENTS.md`. Architect reads it and uses `bd create`, `bd show`, `bd close`, etc. to manage tasks.
 
-### 常用命令速查
+### Quick command reference
 
 ```bash
-bd ready              # 列出无阻塞、待处理的任务
-bd create "标题" -t feature -p 1    # 创建任务（-t: bug/feature/task, -p: 0-3）
-bd show bd-42 --json  # 查看任务详情
-bd update bd-42 --claim -q   # 认领任务
-bd close bd-42 --reason "Done" -q  # 关闭任务
-bd prime              # 打印当前工作流上下文
+bd ready              # List unblocked, pending tasks
+bd create "Title" -t feature -p 1    # Create task (-t: bug/feature/task, -p: 0-3)
+bd show bd-42 --json  # View task details
+bd update bd-42 --claim -q   # Claim a task
+bd close bd-42 --reason "Done" -q  # Close a task
+bd prime              # Print current workflow context
 ```
 
 ---
 
-## 第四步：安装 Muninn Memory（跨会话持久记忆）
+## Step 4: Install Muninn Memory (Cross-Session Persistent Memory)
 
-Muninn 是本地运行的记忆数据库，智能体用它保存架构决策、编码规范、已知坑点，跨会话复用。
+Muninn is a persistent memory database. Agents use it to save architectural decisions, coding conventions, and known pitfalls across sessions.
 
-> **注意**：Muninn 目前通过 HTTP MCP 连接。你需要自己部署 Muninn 服务（本地 Docker 或源码运行），然后配置到 opencode。
+> **Decision required**: Do you already have a remote Muninn instance running (team server, cloud, etc.)? If yes, skip to [Step 4.2](#42-configure-in-opencodejson) and just configure the URL. If no, choose a local deployment method below.
 
-### 4.1 启动 Muninn 服务
+### 4.1 Start the Muninn service
 
+Choose **one** deployment method:
+
+**Option A: Docker (recommended)**
 ```bash
-# 使用 Docker（推荐）
 docker run -d --name muninn \
   -p 8750:8750 \
   -v muninn_data:/data \
   ghcr.io/your-org/muninn:latest
+```
 
-# 或从源码运行（需要有 Go 环境）
+**Option B: From source (requires Go)**
+```bash
 git clone https://github.com/your-org/muninn.git
 cd muninn
 go run ./cmd/server
 ```
 
-服务启动后监听 `http://127.0.0.1:8750`。
+The service listens on `http://127.0.0.1:8750`.
 
-### 4.2 在 opencode.json 中配置
+> **Tip**: Docker is easier to set up and isolates the service. Source builds give you full control but require a Go toolchain.
+
+### 4.2 Configure in opencode.json
 
 ```json
 {
@@ -172,273 +196,230 @@ go run ./cmd/server
 
 ---
 
-## 第五步：配置 opencode 核心环境
+## Step 5: Configure the OpenCode Environment
 
-### 5.1 目录结构
+OpenCode supports two placement strategies: **global** (shared across all projects) and **project-level** (scoped to one project). Project-level is recommended — it keeps config, agents, and behavior specs versioned alongside your code.
 
-```
-~/.config/opencode/
-├── opencode.json          # 全局配置（模型、MCP、智能体）
-├── AGENTS.md              # 全局智能体行为规范（CodeGraph 指令等）
-├── agents/
-│   ├── architect.md       # Primary 智能体 — 编排者
-│   ├── coder.md           # Subagent — 代码实现
-│   └── designer.md        # Subagent — UI/UX 脚手架
-├── commands/              # 自定义 slash 命令
-├── skills/                # 技能目录
-└── plugins/               # 插件目录
-```
+| Resource | Global Location | Project Location | Recommendation |
+|----------|----------------|-----------------|----------------|
+| Config (`opencode.json`) | `~/.config/opencode/opencode.json` | `.opencode/opencode.json` | **Project-level** |
+| Agents (`architect.md`, etc.) | `~/.config/opencode/agents/` | `.opencode/agents/` | Your choice |
+| Behavior spec (`AGENTS.md`) | `~/.config/opencode/AGENTS.md` | `.opencode/AGENTS.md` | Your choice |
 
-### 5.2 全局配置文件 `opencode.json`
+> **Your choice**: Before proceeding, decide where to place each resource. The steps below show both paths — pick one and skip the other.
 
-```jsonc
-{
-  "$schema": "https://opencode.ai/config.json",
-  "autoupdate": false,
-  "model": "deepseek/deepseek-v4-pro",
-  "small_model": "deepseek/deepseek-v4-flash",
-  "agent": {
-    "general": {
-      "model": "deepseek/deepseek-v4-pro"
-    }
-  },
-  "mcp": {
-    // CodeGraph — 由 codegraph install 自动写入
-    "codegraph": {
-      "type": "local",
-      "command": ["codegraph", "serve", "--mcp"],
-      "enabled": true
-    },
-    // Muninn Memory
-    "memory": {
-      "type": "remote",
-      "url": "http://127.0.0.1:8750/mcp",
-      "enabled": true,
-      "headers": {
-        "Authorization": "Bearer <your-muninn-token>"
-      }
-    }
-    // Beads 通过 CLI 命令调用，无需 MCP 配置
-  }
-}
-```
+### 5.0 Required environment variable
 
-> **说明**：CodeGraph MCP 配置通常由 `codegraph install --target=opencode` 自动写入，你无需手动添加。Muninn 需要手动配置。
-
-### 5.3 安装智能体定义文件
-
-将三个智能体文件复制到 agents 目录：
+OpenCode's multi-agent background subagent feature requires an experimental flag:
 
 ```bash
-mkdir -p ~/.config/opencode/agents
+export OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true
+```
 
-# 从本仓库复制智能体定义文件
+Add this to your shell profile (`~/.zshrc`, `~/.bashrc`, etc.):
+
+```bash
+echo 'export OPENCODE_EXPERIMENTAL_BACKGROUND_SUBAGENTS=true' >> ~/.zshrc
+```
+
+### 5.1 Agent definition files
+
+Copy the three agent files. Pick **one** location:
+
+```bash
+# Option A: Global (shared across all projects)
+mkdir -p ~/.config/opencode/agents
 cp agents/architect.md ~/.config/opencode/agents/
 cp agents/coder.md ~/.config/opencode/agents/
 cp agents/designer.md ~/.config/opencode/agents/
+
+# Option B: Project-level (recommended for single-project repos)
+mkdir -p .opencode/agents
+cp agents/architect.md .opencode/agents/
+cp agents/coder.md .opencode/agents/
+cp agents/designer.md .opencode/agents/
 ```
 
-**智能体角色说明**：
+**Agent role descriptions**:
 
-| 智能体 | 类型 | 职责 |
-|--------|------|------|
-| **architect** | `primary` | 理解需求 → 探索代码 → 拆解为 bd 任务 → 异步分派给 coder/designer |
-| **coder** | `subagent` | 拉取 bd 任务 → 加载 TDD + grill-me 技能 → 实现代码 → 验证 → 提交 |
-| **designer** | `subagent` | 拉取 UI 设计任务 → 加载 frontend-design + grill-me 技能 → 产出可访问的响应式脚手架 |
+| Agent | Type | Responsibility |
+|-------|------|----------------|
+| **architect** | `primary` | Understand requirements → explore code → decompose into bd tasks → dispatch asynchronously to coder/designer |
+| **coder** | `subagent` | Pull bd tasks → load TDD + grill-me skills → implement code → verify → commit |
+| **designer** | `subagent` | Pull UI design tasks → load frontend-design + grill-me skills → produce accessible, responsive scaffolding |
 
-### 5.4 全局行为规范 `AGENTS.md`
+### 5.2 Configuration file (`opencode.json`)
 
-`AGENTS.md` 是所有对话的全局前缀。包含：
-- CodeGraph 工具使用规范（GREP GATE）
-- 工作流状态机（INITIAL → EXPLORE → EDIT → VALIDATE）
-- Muninn 记忆协议
-- TDD 纪律
+**Recommendation: use project-level** so your config is versioned with the code and doesn't pollute global settings.
 
-复制到你的配置目录：
+Pick **one** location:
 
 ```bash
+# Option A: Project-level (recommended)
+mkdir -p .opencode
+printf '{\n  "$schema": "https://opencode.ai/config.json",\n  "model": "deepseek/deepseek-v4-pro",\n  "small_model": "deepseek/deepseek-v4-flash",\n  "agent": {\n    "general": {\n      "model": "deepseek/deepseek-v4-pro"\n    }\n  },\n  "mcp": {\n    "lsp": {\n      "type": "local",\n      "command": ["codegraph", "serve", "--mcp"],\n      "enabled": true\n    },\n    "memory": {\n      "type": "remote",\n      "url": "http://127.0.0.1:8750/mcp",\n      "enabled": true,\n      "headers": {\n        "Authorization": "Bearer <your-muninn-token>"\n      }\n    }\n  }\n}\n' > .opencode/opencode.json
+
+# Option B: Global
+printf '{\n  "$schema": "https://opencode.ai/config.json",\n  "model": "deepseek/deepseek-v4-pro",\n  "small_model": "deepseek/deepseek-v4-flash",\n  "agent": {\n    "general": {\n      "model": "deepseek/deepseek-v4-pro"\n    }\n  },\n  "mcp": {\n    "lsp": {\n      "type": "local",\n      "command": ["codegraph", "serve", "--mcp"],\n      "enabled": true\n    },\n    "memory": {\n      "type": "remote",\n      "url": "http://127.0.0.1:8750/mcp",\n      "enabled": true,\n      "headers": {\n        "Authorization": "Bearer <your-muninn-token>"\n      }\n    }\n  }\n}\n' > ~/.config/opencode/opencode.json
+```
+
+> **Notes**:
+> - You must add `lsp` (CodeGraph) and `memory` (Muninn) MCP config manually.
+> - Replace `<your-muninn-token>` with your actual Muninn token, or remove the `headers` block if no auth is required.
+
+### 5.3 Behavior specification (`AGENTS.md`)
+
+`AGENTS.md` is injected as a prefix into every conversation. It contains CodeGraph tool rules, workflow state machine, Muninn memory protocol, and TDD discipline.
+
+> **Decision required**: Do you want agents to follow this behavior specification? If not, skip this step entirely.
+
+If yes, pick the same location you chose for agents (5.1):
+
+```bash
+# Option A: Global
 cp AGENTS.md ~/.config/opencode/AGENTS.md
+
+# Option B: Project-level
+cp AGENTS.md .opencode/AGENTS.md
 ```
+
+> **Note**: `bd setup opencode` also writes instructions into the project root `AGENTS.md`. This is separate — keep the swarm behavior spec at your chosen level and let `bd` write its workflow instructions at the project root.
 
 ---
 
-## 第六步：项目级配置
+## Step 7: Initialize Your Project
 
-每个需要使用 OpenCode Swarm 的项目都需要一份 `.opencode/opencode.json`。
-
-### 最简单的项目配置
-
-在项目根目录创建 `.opencode/opencode.json`：
-
-```jsonc
-{
-  "$schema": "https://opencode.ai/config.json"
-}
-```
-
-这个空配置告诉 OpenCode 该项目已激活。全局配置（智能体、MCP）会自然继承。
-
-### 可选：项目级覆盖
-
-你可以在项目配置中覆盖模型、MCP 设置等：
-
-```jsonc
-{
-  "$schema": "https://opencode.ai/config.json",
-  "model": "anthropic/claude-sonnet-4-6",
-  "mcp": {
-    "codegraph": {
-      "type": "local",
-      "command": ["codegraph", "serve", "--mcp"],
-      "enabled": true
-    }
-  }
-}
-```
-
-### 项目级行为规范
-
-创建 `.opencode/AGENTS.md`（可选，会在对话中注入）：
-
-```bash
-# 例如写入 Beads 的操作指令
-echo "Use 'bd' for task tracking. Run 'bd prime' for workflow context." >> .opencode/AGENTS.md
-```
-
----
-
-## 第七步：初始化你的项目
-
-假设你的项目在 `/path/to/my-project`：
+Now that config and agents are placed (Step 5), initialize the remaining tooling per project:
 
 ```bash
 cd /path/to/my-project
 
-# 1. 初始化 CodeGraph 语义索引
+# 1. Initialize CodeGraph semantic index
 codegraph init -i
 
-# 2. 初始化 Beads 任务追踪
+# 2. Initialize Beads task tracking
 bd init
 bd setup opencode
 
-# 3. 创建 .opencode 项目配置
-mkdir -p .opencode
-printf '{\n  "$schema": "https://opencode.ai/config.json"\n}\n' > .opencode/opencode.json
-
-# 4. （可选）写入项目级行为规范
+# 3. (Optional) Remind agents to use Beads + CodeGraph in project AGENTS.md
 echo '## Issue Tracking
 Use `bd` for task tracking: `bd ready` for unblocked work, `bd create`, `bd close`.
 Run `bd prime` at session start for workflow context.
 
 ## CodeGraph
 This project has CodeGraph initialized (.codegraph/ exists).
-Use `lsp_codegraph_explore` as your PRIMARY code exploration tool.' >> .opencode/AGENTS.md
+Use `lsp_codegraph_explore` as your PRIMARY code exploration tool.' >> AGENTS.md
 ```
 
 ---
 
-## 第八步：启动并使用
+## Step 8: Launch and Use
 
 ```bash
 cd /path/to/my-project
 opencode
 ```
 
-进入 opencode 交互界面后，Architect 作为 primary 智能体接管对话。你可以这样开始：
+Once inside the opencode interactive interface, Architect takes over as the primary agent. You can start like this:
 
 ```
-帮我实现用户登录功能，包含邮箱+密码登录和 Google OAuth 登录
+Implement user login with email+password and Google OAuth
 ```
 
-Architect 会：
-1. 调用 `memory_muninn_recall` 检查之前的架构决策
-2. 使用 CodeGraph 探索代码库
-3. 用 `bd create` 将需求拆解为多个任务
-4. 逐个异步分派给 coder 和 designer
+Architect will:
+1. Call `memory_muninn_recall` to check prior architectural decisions
+2. Use CodeGraph to explore the codebase
+3. Use `bd create` to decompose requirements into tasks
+4. Dispatch them asynchronously to coder and designer
 
 ---
 
-## 附录 A：技能（Skills）说明
+## Appendix A: Skills
 
-智能体启动时自动加载技能，改变其工作模式：
+Skills change how agents work. Install each one via CLI:
 
-| 技能 | 加载者 | 效果 |
-|------|--------|------|
-| `tdd` | coder | 强制遵守红-绿-重构循环，无测试 = 未完成 |
-| `grill-me` | coder, designer | 允许智能体向 architect 发起追问，不瞎猜 |
-| `frontend-design` | designer | 注入设计规范清单、无障碍检查、响应式策略 |
-| `caveman` | (按需) | 超级压缩对话，省 ~75% token |
-| `diagnose` | (按需) | 系统化调试：复现→缩小→假设→打桩→修复→回归 |
-| `vue` | (按需) | Vue 3 Composition API 专项 |
-| `quasar-skilld` | (按需) | Quasar UI 框架专项 |
+```bash
+npx skills add https://github.com/obra/superpowers --skill <skill-name> -a opencode
+```
+
+| Skill | Used By | Command | Effect |
+|-------|---------|---------|--------|
+| `tdd` | coder | `npx skills add ... --skill tdd -a opencode` | Enforces red-green-refactor cycle; no tests = not done |
+| `grill-me` | coder, designer | `npx skills add ... --skill grill-me -a opencode` | Allows agents to ask architect follow-up questions instead of guessing |
+| `frontend-design` | designer | `npx skills add ... --skill frontend-design -a opencode` | Injects design spec checklist, accessibility checks, responsive strategy |
+| `caveman` | (on-demand) | `npx skills add ... --skill caveman -a opencode` | Ultra-compressed conversation, saves ~75% tokens |
+| `diagnose` | (on-demand) | `npx skills add ... --skill diagnose -a opencode` | Systematic debugging: reproduce → minimize → hypothesize → instrument → fix → regress |
+| `vue` | (on-demand) | `npx skills add ... --skill vue -a opencode` | Vue 3 Composition API specialization |
+| `quasar-skilld` | (on-demand) | `npx skills add ... --skill quasar-skilld -a opencode` | Quasar UI framework specialization |
 
 ---
 
-## 附录 B：完整目录参考
+## Appendix B: Complete Directory Reference
 
 ```
-~/.config/opencode/
-├── opencode.json           # 全局配置
-├── AGENTS.md               # 全局智能体行为规范
+~/.config/opencode/           # Global (if you chose global in Step 5)
+├── opencode.json             # Global config
+├── AGENTS.md                 # Global agent behavior spec
 ├── agents/
-│   ├── architect.md        # 编排智能体，primary
-│   ├── coder.md            # 代码实现智能体，subagent
-│   └── designer.md         # UI 设计智能体，subagent
-├── commands/
-│   ├── caveman.md          # /caveman 命令
-│   ├── caveman-commit.md   # /caveman-commit 命令
-│   └── caveman-review.md   # /caveman-review 命令
-├── skills/                 # 技能文件
-├── plugins/                # 插件文件
-└── opencode-swarm.md       # 本文档
+│   ├── architect.md          # Orchestrator agent, primary
+│   ├── coder.md              # Code implementation agent, subagent
+│   └── designer.md           # UI design agent, subagent
+├── commands/                 # Custom slash commands
+├── skills/                   # Skill files
+├── plugins/                  # Plugin files
+└── opencode-swarm.md         # This document
 
-项目目录/
+Project directory/
 ├── .opencode/
-│   └── opencode.json       # 项目配置
-├── .opencode/AGENTS.md     # （可选）项目级行为规范
-├── .codegraph/             # CodeGraph 索引（codegraph init -i 生成）
-├── .beads/                 # Beads 数据库（bd init 生成）
-└── AGENTS.md               # Beads 工作流指令（bd setup opencode 生成）
+│   ├── opencode.json         # Project config (recommended)
+│   ├── AGENTS.md             # (Optional) Project-level behavior spec
+│   └── agents/               # (Optional) Project-level agents
+│       ├── architect.md
+│       ├── coder.md
+│       └── designer.md
+├── .codegraph/               # CodeGraph index (codegraph init -i)
+├── .beads/                   # Beads database (bd init)
+└── AGENTS.md                 # Beads workflow instructions (bd setup opencode)
 ```
 
 ---
 
-## 附录 C：常见问题
+## Appendix C: FAQ
 
-### Q: CodeGraph MCP 提示 "not initialized"
+### Q: CodeGraph MCP reports "not initialized"
 ```bash
 cd your-project && codegraph init -i
 ```
 
-### Q: bd 命令找不到
+### Q: bd command not found
 ```bash
 # Homebrew
 brew install beads
 
-# 或检查 PATH
+# Or check PATH
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-### Q: Muninn 内存连接失败
-确保 Muninn 容器/服务在运行：
+### Q: Muninn memory connection fails
+Ensure the Muninn container/service is running:
 ```bash
 docker ps | grep muninn
 curl http://127.0.0.1:8750/mcp
 ```
 
-### Q: Architect 不派发任务给 Coder
-- 检查 `agents/architect.md` 中 `mode: primary` 是否设置
-- 检查 `agents/coder.md` 中 `mode: subagent` 是否设置
-- 确保 opencode 版本支持 multi-agent 模式
+### Q: Architect doesn't dispatch tasks to Coder
+- Check that `agents/architect.md` has `mode: primary`
+- Check that `agents/coder.md` has `mode: subagent`
+- Ensure your opencode version supports multi-agent mode
 
-### Q: 如何验证整套环境就绪
+### Q: How to verify the full environment is ready
 ```bash
-# 1. 检查各组件
-codegraph status .    # CodeGraph 索引状态
-bd ready              # Beads 是否有挂起任务
-opencode --version    # OpenCode 版本
+# 1. Check each component
+codegraph status .    # CodeGraph index status
+bd ready              # Any pending Beads tasks
+opencode --version    # OpenCode version
 
-# 2. 进入 opencode 对话后
-# Architect 应自动：memory_muninn_recall → 读取 AGENTS.md
-# 后续应使用 lsp_codegraph_* 工具探索代码
+# 2. Inside an opencode session
+# Architect should automatically: memory_muninn_recall → read AGENTS.md
+# Subsequent exploration should use lsp_codegraph_* tools
 ```
