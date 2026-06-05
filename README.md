@@ -40,9 +40,7 @@
 Before installing anything, check which components you already have:
 
 ```bash
-# Check what's already installed
 opencode --version     2>/dev/null && echo "✓ OpenCode" || echo "✗ OpenCode — install in Step 1"
-uv --version           2>/dev/null && echo "✓ uv (Python)" || echo "✗ uv — install in Step 1"
 codegraph version      2>/dev/null && echo "✓ CodeGraph" || echo "✗ CodeGraph — install in Step 2"
 bd --version           2>/dev/null && echo "✓ Beads" || echo "✗ Beads — install in Step 3"
 ```
@@ -50,7 +48,6 @@ bd --version           2>/dev/null && echo "✓ Beads" || echo "✗ Beads — in
 | Component | Already Installed? | Action |
 |-----------|-------------------|--------|
 | **OpenCode** | Run `opencode --version` | Skip Step 1 |
-| **uv (Python)** | Run `uv --version` | Skip Step 1's uv section |
 | **CodeGraph** | Run `codegraph version` | Skip Step 2 install; run `codegraph init -i` per project |
 | **Beads** | Run `bd --version` | Skip Step 3 install; run `bd init` + `bd setup opencode` per project |
 | **Muninn Memory** | Do you have a remote Muninn instance running? | If yes: skip Step 4 install, go directly to [Step 4.2](#42-configure-in-opencodejson) to configure the URL. If no: proceed with Step 4 to deploy locally. |
@@ -65,19 +62,14 @@ bd --version           2>/dev/null && echo "✓ Beads" || echo "✗ Beads — in
 |------------|---------|-------|
 | **OpenCode** | latest | `npm install -g opencode` |
 | **Node.js** | >=18 | CodeGraph bundles its own runtime, Node optional for install |
-| **Python + uv** | >=3.10 | Required for Muninn MCP and Beads MCP |
 | **Git** | >=2.0 | Version control |
 
 ```bash
 # Install opencode
 npm install -g opencode
 
-# Install uv (Python package manager)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Verify all tools
+# Verify
 opencode --version
-uv --version
 ```
 
 ---
