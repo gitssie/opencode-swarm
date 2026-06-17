@@ -207,14 +207,37 @@ Commit message rules:
 
 ## COMPLETION (MANDATORY)
 
-Execute these in order, then return the structured output:
+Execute these in order, then return the structured output specified at the end of this document:
 
 **Actions:**
 1. PRE-SUBMIT CHECKS — verify all pass (see PRE-SUBMIT CHECKS section below)
 2. `git commit` (see GIT COMMIT section above)
 3. `bd close bd-X --reason "summary" -q`
 
-**Structured output — return EXACTLY this format and nothing else:**
+## PRE-SUBMIT CHECKS
+
+Before submitting, run these checks — do NOT reread files you just wrote:
+
+**CHECK 1: TODO/FIXME SCAN** — scan ALL changed files for: TODO, FIXME, HACK, XXX, PLACEHOLDER, STUB. Resolve all before submission.
+
+**CHECK 2: MECHANICAL COMPLETENESS**
+- Every code path has a return statement where required
+- Every error path is handled (no silently swallowed errors)
+- No unused imports added in this task
+- No unreachable code introduced
+
+**CHECK 3: DEBUG CLEANUP** — remove any:
+- console.log, console.debug, console.trace added during development
+- debugger statements
+- Temporary test variables or logging blocks
+
+Report: `PRE-SUBMIT: PASS` if all clean. If any issue: `PRE-SUBMIT: FAIL: (brief reason)`.
+
+**Do NOT reread files you just wrote.** You know what you wrote. Typecheck is your verification.
+
+## STRUCTURED OUTPUT (MANDATORY)
+
+Return EXACTLY this format and nothing else:
 ```xml
 <done>
   <issue>closed bd-X</issue>
@@ -238,24 +261,3 @@ Each field is a mandatory self-check. Do NOT blindly write "pass" — report the
   <need>what's needed</need>
 </blocked>
 ```
-
-## PRE-SUBMIT CHECKS
-
-Before submitting, run these checks — do NOT reread files you just wrote:
-
-**CHECK 1: TODO/FIXME SCAN** — scan ALL changed files for: TODO, FIXME, HACK, XXX, PLACEHOLDER, STUB. Resolve all before submission.
-
-**CHECK 2: MECHANICAL COMPLETENESS**
-- Every code path has a return statement where required
-- Every error path is handled (no silently swallowed errors)
-- No unused imports added in this task
-- No unreachable code introduced
-
-**CHECK 3: DEBUG CLEANUP** — remove any:
-- console.log, console.debug, console.trace added during development
-- debugger statements
-- Temporary test variables or logging blocks
-
-Report: `PRE-SUBMIT: PASS` if all clean. If any issue: `PRE-SUBMIT: FAIL: (brief reason)`.
-
-**Do NOT reread files you just wrote.** You know what you wrote. Typecheck is your verification.

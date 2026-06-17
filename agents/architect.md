@@ -457,6 +457,95 @@ See [DESIGNER DELEGATION](#designer-delegation) for the full decision tree.
 | `explore` | Broad codebase searches, pattern discovery |
 | `designer` | UI scaffolds before coder — new pages, components, redesigns (see [DESIGNER DELEGATION](#designer-delegation)) |
 
+### Subagent Return Structures
+
+Architect must understand these to judge completion. Subagents return ONE of these formats.
+
+#### CODER — `<done>` (task completed)
+
+```xml
+<done>
+  <issue>closed bd-X</issue>
+  <skill>tdd loaded</skill>
+  <typecheck>pass | fail: reason</typecheck>
+  <tdd>pass | fail: reason</tdd>
+  <summary>one-line summary</summary>
+</done>
+```
+
+**How to judge:**
+
+| Field | `pass` means | `fail` means |
+|-------|-------------|-------------|
+| `<typecheck>` | Compiler/linter passed | Build is broken. **Task incomplete — report to user as failed.** |
+| `<tdd>` | Tests written AND passing. TDD loop was followed. | Tests were skipped or failed. **Task incomplete — report to user as failed.** Coder loaded tdd skill but did not execute it. Do NOT accept "tdd loaded, skip (no tests)" as a valid done result. |
+
+**Rule: `<tdd>` = coder's honesty check.** Coder is REQUIRED to write tests (see coder.md §TDD DISCIPLINE). If coder returns `<tdd>pass</tdd>`, architect trusts it. If `<tdd>fail</tdd>`, architect re-delegates with same task_id: tell coder to write tests. **Never report a `<tdd>fail</tdd>` task as "done" to the user.**
+
+#### CODER — `<blocked>` (task cannot proceed)
+
+```xml
+<blocked>
+  <issue>bd-X</issue>
+  <reason>what went wrong</reason>
+  <need>what's needed</need>
+</blocked>
+```
+
+**How to respond:** Read `<reason>` and `<need>`. Resolve the blocker (explore, ask user, fix dependency), then re-delegate with **same task_id**. Never start fresh on a blocked task.
+
+#### DESIGNER — `<done>` (task completed)
+
+```xml
+<done>
+  <issue>closed bd-X</issue>
+  <skill>frontend-design loaded</skill>
+  <design-system>detected | none — generic Tailwind</design-system>
+  <scaffolds>number of files produced</scaffolds>
+  <summary>one-line summary</summary>
+</done>
+```
+
+**How to judge:**
+
+| Field | What to check |
+|-------|--------------|
+| `<design-system>` | `none` means no design system was detected. Scaffolds may use generic Tailwind. This is fine if the project has no design system. |
+| `<scaffolds>` | Must be ≥1. Zero scaffolds = nothing was produced. **Task incomplete.** |
+
+#### DESIGNER — `<blocked>` (task cannot proceed)
+
+```xml
+<blocked>
+  <issue>bd-X</issue>
+  <reason>what went wrong</reason>
+  <need>what's needed</need>
+</blocked>
+```
+
+**How to respond:** Same as coder blocked — resolve, re-delegate with same task_id.
+
+### Workflow Integration
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Architect receives subagent result:                     │
+│                                                          │
+│  STEP 1 — inspect root tag:                              │
+│    <done> → follow field-specific checklist below        │
+│    <blocked> → resolve NEED, re-delegate (same task_id)  │
+│                                                          │
+│  STEP 2 — for <done>, check critical fields:             │
+│    CODER: <tdd> fail? → RE-DELEGATE. Work not done.     │
+│    CODER: <typecheck> fail? → RE-DELEGATE. Build broken.│
+│    DESIGNER: <scaffolds> 0? → RE-DELEGATE. Nothing made.│
+│                                                          │
+│  STEP 3 — only when ALL critical fields pass:            │
+│    Report to user: ✓ bd-X done                           │
+│    Store decisions to memory_muninn if applicable        │
+└─────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## DESIGNER DELEGATION
