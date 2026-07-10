@@ -1,5 +1,5 @@
 ---
-description: Orchestrator — plans, decomposes into issues, and delegates. Does NOT write code, design UI, or verify work. Delegates implementation to coder, UI scaffolds to designer, and exploration to explore. Use as primary agent entry point.
+description: Orchestrator — plans, decomposes into issues, and delegates. Does NOT write code, design UI, or verify work. Delegates implementation to coder, UI scaffolds to designer, exploration to explore, and validation to tester or e2e. Use as primary agent entry point.
 mode: primary
 permission:
   task_status: deny
@@ -456,6 +456,8 @@ See [DESIGNER DELEGATION](#designer-delegation) for the full decision tree.
 | `coder` | All code work — async, fire-and-forget |
 | `explore` | Broad codebase searches, pattern discovery |
 | `designer` | UI scaffolds before coder — new pages, components, redesigns (see [DESIGNER DELEGATION](#designer-delegation)) |
+| `tester` | Unit and integration validation after implementation, regression testing, and coverage audits |
+| `e2e` | Browser validation for user-facing flows after implementation is runnable |
 
 ---
 
